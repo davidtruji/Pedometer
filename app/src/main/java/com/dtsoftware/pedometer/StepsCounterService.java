@@ -18,6 +18,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -143,7 +144,7 @@ public class StepsCounterService extends Service implements SensorEventListener 
         sendBroadcast(intent);
         updateNotification();
         saveStepsOnDB();
-        Log.d(TAG, "Send steps counter " + currentCount);
+        Log.d(TAG, "Send steps counter");
     }
 
     private void updateNotification() {
@@ -154,7 +155,7 @@ public class StepsCounterService extends Service implements SensorEventListener 
     private void initializeDB() {
 
         new Thread(() -> {
-            Steps steps = stepsDao.findByDate(Util.getTodayKey());
+            Steps steps = stepsDao.findByDate(LocalDate.now().toEpochDay());
 
             if (steps != null) {
                 steps.getSteps().add(0);
@@ -171,7 +172,7 @@ public class StepsCounterService extends Service implements SensorEventListener 
             }
 
             bdInitialized = true;
-            Log.d(TAG, "BD has been initialized");
+            Log.d(TAG, "BD has been initialized currentCount:" + currentCount + " prevCount:" + prevCount);
 
         }).start();
 
@@ -181,17 +182,19 @@ public class StepsCounterService extends Service implements SensorEventListener 
 
         if (bdInitialized) {
             new Thread(() -> {
-                Steps steps = stepsDao.findByDate(Util.getTodayKey());
+                Steps steps = stepsDao.findByDate(LocalDate.now().toEpochDay());
 
                 if (steps != null) {
                     steps.getSteps().set(steps.getSteps().size() - 1, currentCount);
                     stepsDao.update(steps);
                 } else {
+                    bdInitialized = false;
                     prevCount = -1;
+                    currentCount = 0;
                     initializeDB();
                 }
 
-                Log.d(TAG, "Saved steps in BD");
+                Log.d(TAG, "Saved steps in BD currentCount:" + currentCount + " prevCount:" + prevCount);
             }).start();
         }
 
